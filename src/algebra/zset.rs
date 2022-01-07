@@ -27,6 +27,7 @@ pub trait ZSet<DataType, WeightType>: FiniteMap<DataType, WeightType>
 where
     DataType: Clone + Hash + Eq + 'static,
     WeightType: ZRingValue,
+    for<'a> &'a Self: IntoIterator<Item = (&'a DataType, &'a WeightType)>,
 {
     //type KeyIterator: Iterator<Item=DataType>;
 
@@ -289,6 +290,7 @@ where
     pub fn partition<ZS>(set: ZS, partitioner: fn(&DataType) -> KeyType) -> Self
     where
         ZS: ZSet<DataType, WeightType>,
+        for<'a> &'a ZS: IntoIterator<Item = (&'a DataType, &'a WeightType)>,
     {
         let mut result = FiniteHashMap::<KeyType, ZSetHashMap<DataType, WeightType>>::new();
         for t in set.support() {

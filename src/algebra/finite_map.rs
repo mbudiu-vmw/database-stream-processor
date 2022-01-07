@@ -30,6 +30,7 @@ pub trait FiniteMap<DataType, ResultType>:
 where
     DataType: Clone + Hash + Eq + 'static,
     ResultType: GroupValue,
+    for<'a> &'a Self: IntoIterator<Item = (&'a DataType, &'a ResultType)>,
 {
     /// Find the value associated to the specified key
     fn lookup(&self, key: &DataType) -> ResultType;
@@ -47,7 +48,7 @@ where
     //  TODO: it would be nice for this to return a trait instead of a type.
     fn map<F, ConvertedDataType>(&self, mapper: F) -> FiniteHashMap<ConvertedDataType, ResultType>
     where
-        F: Fn(DataType) -> ConvertedDataType,
+        F: Fn(&DataType) -> ConvertedDataType,
         ConvertedDataType: Clone + Hash + Eq + 'static;
     /// Apply the `filter` function to every key in the map and
     /// generate a new map containing only the keys for which the `filter`
@@ -108,6 +109,19 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         self.value.into_iter()
+    }
+}
+
+impl<'a, DataType, ResultType> IntoIterator for &'a FiniteHashMap<DataType, ResultType>
+where
+    DataType: Clone + Hash + Eq + 'static,
+    ResultType: GroupValue,
+{
+    type Item = (&'a DataType, &'a ResultType);
+    type IntoIter = std::collections::hash_map::Iter<'a, DataType, ResultType>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.value.iter()
     }
 }
 
@@ -181,12 +195,11 @@ where
 
     fn map<F, ConvertedDataType>(&self, mapper: F) -> FiniteHashMap<ConvertedDataType, ResultType>
     where
-        F: Fn(DataType) -> ConvertedDataType,
+        F: Fn(&DataType) -> ConvertedDataType,
         ConvertedDataType: Clone + Hash + Eq + 'static,
     {
-        self.clone()
-            .into_iter()
-            .map(|(k, v)| (mapper(k), v))
+        self.into_iter()
+            .map(|(k, v)| (mapper(k), v.clone()))
             .collect()
     }
 
@@ -194,9 +207,9 @@ where
     where
         F: Fn(&DataType) -> bool,
     {
-        self.clone()
-            .into_iter()
+        self.into_iter()
             .filter(|(k, _)| filter(k))
+            .map(|(k, v)| (k.clone(), v.clone()))
             .collect()
     }
 
